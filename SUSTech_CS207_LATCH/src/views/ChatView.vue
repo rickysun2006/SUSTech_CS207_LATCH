@@ -13,10 +13,10 @@
       <div v-if="messages.length === 0" class="empty-state">
         <p>{{ $t('chat.startPrompt', { topic: topicTitle }) }}</p>
       </div>
-      
-      <div 
-        v-for="(msg, index) in messages" 
-        :key="index" 
+
+      <div
+        v-for="(msg, index) in messages"
+        :key="index"
         class="message-wrapper"
         :class="msg.role"
       >
@@ -30,8 +30,8 @@
     </div>
 
     <div class="input-area">
-      <textarea 
-        v-model="userInput" 
+      <textarea
+        v-model="userInput"
         @keydown.enter.prevent="sendMessage"
         :placeholder="$t('chat.placeholder')"
         rows="3"
@@ -88,7 +88,7 @@ const sendMessage = async () => {
     role: 'user',
     content: userInput.value
   })
-  
+
   const userText = userInput.value
   userInput.value = ''
   await scrollToBottom()

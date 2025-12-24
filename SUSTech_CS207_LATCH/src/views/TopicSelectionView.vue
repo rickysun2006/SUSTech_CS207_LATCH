@@ -4,13 +4,13 @@
       <h1>{{ $t('common.latch') }}</h1>
       <p>{{ $t('common.subtitle') }}</p>
     </header>
-    
+
     <main class="main-content">
       <h2>{{ $t('home.selectTopic') }}</h2>
       <div class="topic-grid">
-        <div 
-          v-for="topic in topics" 
-          :key="topic.id" 
+        <div
+          v-for="topic in topics"
+          :key="topic.id"
           class="topic-card"
           @click="selectTopic(topic.id)"
         >
