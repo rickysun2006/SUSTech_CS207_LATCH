@@ -36,7 +36,9 @@
         :placeholder="$t('chat.placeholder')"
         rows="3"
       ></textarea>
-      <button @click="sendMessage" :disabled="!userInput.trim()">{{ $t('chat.send') }}</button>
+      <button @click="sendMessage" :disabled="!userInput.trim() || isLoading">
+        {{ isLoading ? $t('common.loading') : $t('chat.send') }}
+      </button>
     </div>
   </div>
 </template>
@@ -45,11 +47,13 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { getAIResponse } from '../services/aiService'
 
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const chatContainer = ref<HTMLElement | null>(null)
+const isLoading = ref(false)
 
 const topicId = route.params.topicId as string
 
@@ -81,7 +85,7 @@ const scrollToBottom = async () => {
 }
 
 const sendMessage = async () => {
-  if (!userInput.value.trim()) return
+  if (!userInput.value.trim() || isLoading.value) return
 
   // Add user message
   messages.value.push({
@@ -91,16 +95,26 @@ const sendMessage = async () => {
 
   const userText = userInput.value
   userInput.value = ''
+  isLoading.value = true
   await scrollToBottom()
 
-  // Simulate AI response (placeholder)
-  setTimeout(async () => {
+  try {
+    // Call AI Service
+    const aiResponse = await getAIResponse(topicId, messages.value)
+    
     messages.value.push({
       role: 'assistant',
-      content: t('chat.simulatedResponse', { persona: persona.value, userText })
+      content: aiResponse || '...'
     })
+  } catch (e) {
+    messages.value.push({
+      role: 'assistant',
+      content: '[Connection Error] The engineer is ignoring you.'
+    })
+  } finally {
+    isLoading.value = false
     await scrollToBottom()
-  }, 1000)
+  }
 }
 
 const goBack = () => {
