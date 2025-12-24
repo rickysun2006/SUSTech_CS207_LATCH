@@ -154,182 +154,215 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #f5f7fa;
+  background-color: var(--color-background); /* 使用全局背景色变量 */
 }
 
+/* --- 头部设计 --- */
 .chat-header {
-  background: white;
+  background: rgba(255, 255, 255, 0.85); /* 如果是暗黑模式需调整这里，暂时保持明亮 */
+  backdrop-filter: blur(12px);
   padding: 1rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e0e0e0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.header-info {
-  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .header-info h2 {
   margin: 0;
-  font-size: 1.2rem;
-  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-heading);
 }
 
 .persona {
-  font-size: 0.85rem;
-  color: #666;
-  background: #eee;
-  padding: 2px 8px;
-  border-radius: 10px;
+  font-size: 0.8rem;
+  color: var(--c-primary);
+  background: var(--c-primary-light);
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  margin-left: 0.5rem;
 }
 
 .back-btn, .end-session-btn {
   padding: 0.5rem 1rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
 .back-btn {
   background: transparent;
-  color: #666;
+  color: var(--color-text);
 }
-
 .back-btn:hover {
-  background: #eee;
+  background: var(--color-border);
+  color: var(--color-heading);
 }
 
 .end-session-btn {
-  background: #e74c3c;
-  color: white;
+  background: #fee2e2;
+  color: #dc2626;
 }
-
 .end-session-btn:hover {
-  background: #c0392b;
+  background: #fecaca;
 }
 
+/* --- 消息区域 --- */
 .chat-container {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem;
+  padding: 2rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 900px;
-  margin: 0 auto;
   width: 100%;
-}
-
-.empty-state {
-  text-align: center;
-  color: #999;
-  margin-top: 2rem;
+  max-width: 850px; /*稍微加宽一点*/
+  margin: 0 auto;
+  /* 优化滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 .message-wrapper {
   display: flex;
-  gap: 1rem;
-  max-width: 80%;
+  gap: 1rem; /* 头像和气泡的间距 */
+  max-width: 90%; /* 防止消息太宽 */
+  animation: fadeIn 0.25s ease-out;
+  /* 关键：对其方式 */
+  align-items: flex-start;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 用户消息靠右，并反转flex方向 */
 .message-wrapper.user {
   align-self: flex-end;
   flex-direction: row-reverse;
 }
 
-.message-wrapper.assistant {
-  align-self: flex-start;
-}
-
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  font-weight: bold;
-  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0; /* 关键：防止头像被挤压 */
+  box-shadow: var(--shadow-sm);
 }
 
 .user .avatar {
-  background: #42b983;
+  background: var(--c-primary); /* 使用主色调 */
   color: white;
 }
 
 .assistant .avatar {
-  background: #3498db;
-  color: white;
+  background: var(--c-bg-card);
+  color: var(--c-primary);
+  border: 1px solid var(--color-border);
 }
 
+/* --- 消息气泡核心修复 --- */
 .message-bubble {
-  padding: 1rem;
-  border-radius: 12px;
-  line-height: 1.5;
+  padding: 0.8rem 1.2rem;
+  border-radius: 18px;
+  line-height: 1.6;
+  font-size: 0.95rem;
   position: relative;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-  white-space: pre-wrap;
+
+  /* 关键修复：确保文字换行，防止溢出重合 */
+  word-break: break-word;
+  overflow-wrap: break-word;
+  /* 确保在Flex容器中能正确计算宽度 */
+  min-width: 0;
+  flex: 1; /* 让气泡占据剩余空间，但不超过 max-width */
 }
 
 .user .message-bubble {
-  background: #42b983;
+  background: var(--c-primary);
   color: white;
-  border-top-right-radius: 2px;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25); /* 增加一点主色调的投影 */
 }
 
 .assistant .message-bubble {
-  background: white;
-  color: #2c3e50;
-  border-top-left-radius: 2px;
+  background: var(--c-bg-card);
+  color: var(--color-heading);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: 4px;
+  box-shadow: var(--shadow-sm);
 }
 
+/* --- 输入区域 --- */
 .input-area {
-  background: white;
+  background: transparent;
   padding: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-  gap: 1rem;
-  max-width: 900px;
-  margin: 0 auto;
   width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  position: relative;
 }
 
 textarea {
-  flex: 1;
-  padding: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  resize: none;
+  width: 100%;
+  padding: 1rem 4rem 1rem 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 28px;
+  background: var(--c-bg-card);
+  box-shadow: var(--shadow-md);
+  color: var(--color-heading);
   font-family: inherit;
+  font-size: 1rem;
+  resize: none;
+  transition: all 0.3s;
   outline: none;
 }
 
 textarea:focus {
-  border-color: #42b983;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-light), var(--shadow-lg);
 }
 
 .input-area button {
-  padding: 0 2rem;
-  background: #42b983;
+  position: absolute;
+  right: 2.2rem;
+  bottom: 2.2rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--c-primary);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 20px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
 .input-area button:hover {
-  background: #3aa876;
+  background: var(--c-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .input-area button:disabled {
-  background: #ccc;
+  background: var(--color-text);
+  opacity: 0.5;
+  transform: none;
   cursor: not-allowed;
+  box-shadow: none;
 }
 </style>
