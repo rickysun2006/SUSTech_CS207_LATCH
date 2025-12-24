@@ -101,7 +101,7 @@ const sendMessage = async () => {
   try {
     // Call AI Service
     const aiResponse = await getAIResponse(topicId, messages.value)
-    
+
     messages.value.push({
       role: 'assistant',
       content: aiResponse || '...'
