@@ -1,7 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import 'dotenv/config';
 
-const apiKey = process.env.VITE_GOOGLE_API_KEY || "AIzaSyApV1CsALtoJGldEPnf1_DwWrQ6tFUwKMI";
+const apiKey = process.env.VITE_GOOGLE_API_KEY;
+if (!apiKey) {
+  console.error("Error: VITE_GOOGLE_API_KEY is not set in environment variables.");
+  process.exit(1);
+}
 const genAI = new GoogleGenAI({ apiKey });
 
 async function listModels() {
