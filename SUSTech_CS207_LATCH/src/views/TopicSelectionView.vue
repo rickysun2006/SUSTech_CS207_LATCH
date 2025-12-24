@@ -36,22 +36,22 @@ const { t } = useI18n()
 
 const topics = computed(() => [
   {
-    id: 'combinational-logic',
-    title: t('topics.combinational.title'),
-    description: t('topics.combinational.description'),
-    persona: t('topics.combinational.persona')
+    id: 'level-1',
+    title: t('topics.level1.title'),
+    description: t('topics.level1.description'),
+    persona: t('topics.level1.persona')
   },
   {
-    id: 'verilog-syntax',
-    title: t('topics.verilog.title'),
-    description: t('topics.verilog.description'),
-    persona: t('topics.verilog.persona')
+    id: 'level-2',
+    title: t('topics.level2.title'),
+    description: t('topics.level2.description'),
+    persona: t('topics.level2.persona')
   },
   {
-    id: 'fsm-design',
-    title: t('topics.fsm.title'),
-    description: t('topics.fsm.description'),
-    persona: t('topics.fsm.persona')
+    id: 'level-3',
+    title: t('topics.level3.title'),
+    description: t('topics.level3.description'),
+    persona: t('topics.level3.persona')
   }
 ])
 

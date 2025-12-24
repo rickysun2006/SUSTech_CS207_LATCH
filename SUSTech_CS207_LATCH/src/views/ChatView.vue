@@ -55,9 +55,9 @@ const topicId = route.params.topicId as string
 
 // Map topicId to translation keys
 const topicKeyMap: Record<string, string> = {
-  'combinational-logic': 'combinational',
-  'verilog-syntax': 'verilog',
-  'fsm-design': 'fsm'
+  'level-1': 'level1',
+  'level-2': 'level2',
+  'level-3': 'level3'
 }
 
 const currentTopicKey = topicKeyMap[topicId]
@@ -119,9 +119,14 @@ watch(locale, () => {
 })
 
 const addInitialGreeting = () => {
+  if (!currentTopicKey) return
+
+  const code = t(`topics.${currentTopicKey}.code`)
+  const message = t(`topics.${currentTopicKey}.initialMessage`)
+
   messages.value.push({
     role: 'assistant',
-    content: t('chat.initialGreeting', { topic: topicTitle.value })
+    content: t('chat.initialGreeting', { code, message })
   })
 }
 
@@ -254,6 +259,7 @@ onMounted(() => {
   line-height: 1.5;
   position: relative;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  white-space: pre-wrap;
 }
 
 .user .message-bubble {
