@@ -3,11 +3,11 @@
     <header class="header">
       <h1>{{ $t('common.latch') }}</h1>
       <p>{{ $t('common.subtitle') }}</p>
-      
+
       <div class="api-key-section">
-        <input 
-          type="password" 
-          v-model="apiKeyInput" 
+        <input
+          type="password"
+          v-model="apiKeyInput"
           placeholder="Enter Google Gemini API Key"
           class="api-key-input"
           @change="saveApiKey"
