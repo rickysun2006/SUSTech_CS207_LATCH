@@ -75,7 +75,8 @@ end`,
     goals: 'Goals',
     successTitle: 'Challenge Completed!',
     successMessage: 'Congratulations! You have successfully persuaded the stubborn engineer.',
-    initialGreeting: "```verilog\n{code}\n```\n\n{message}"
+    initialGreeting: "```verilog\n{code}\n```\n\n{message}",
+    hiddenGoal: "???"
   }
 };
 

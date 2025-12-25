@@ -14,7 +14,7 @@
         <ul>
           <li v-for="goal in levelGoals" :key="goal.id" :class="{ completed: satisfiedGoals.includes(goal.id) }">
             <span class="status-icon">{{ satisfiedGoals.includes(goal.id) ? '✅' : '⚪' }}</span>
-            <span>{{ $t(goal.i18nKey) }}</span>
+            <span>{{ satisfiedGoals.includes(goal.id) ? $t(goal.i18nKey) : $t('chat.hiddenGoal') }}</span>
           </li>
         </ul>
       </div>

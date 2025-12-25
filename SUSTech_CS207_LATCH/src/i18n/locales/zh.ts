@@ -75,7 +75,8 @@ end`,
     goals: '说服目标',
     successTitle: '挑战完成！',
     successMessage: '恭喜！你成功说服了这位固执的工程师。',
-    initialGreeting: "```verilog\n{code}\n```\n\n{message}"
+    initialGreeting: "```verilog\n{code}\n```\n\n{message}",
+    hiddenGoal: "???"
   }
 };
 

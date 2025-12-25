@@ -109,11 +109,11 @@ export async function getAIResponse(topicId: string, history: { role: string, co
     if (error.message.includes("API Key")) {
         return "[System Error] API Key is missing. Please go back and set it.";
     }
-    // Fallback to gemini-2.0-flash-exp if 3.0 fails
+    // Fallback to gemini-3-flash-preview if it fails (retry)
     try {
         const genAI = getGenAI();
         const response = await genAI.models.generateContent({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-3-flash-preview",
             config: {
               systemInstruction: {
                 parts: [{ text: systemPrompt }]
@@ -152,7 +152,7 @@ export async function evaluateProgress(topicId: string, history: { role: string,
   }));
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-exp", // Use a fast model for judging
+      model: "gemini-3-flash-preview", // Use gemini-3-flash-preview for judging as requested
       config: {
         systemInstruction: {
           parts: [{ text: judgePrompt }]
@@ -171,7 +171,10 @@ export async function evaluateProgress(topicId: string, history: { role: string,
       contents: contents
     });
 
-    const result = JSON.parse(response.text || "{}");
+    console.log("Judge Response Raw:", response.text);
+    const cleanText = response.text ? response.text.replace(/```json|```/g, '').trim() : "{}";
+    const result = JSON.parse(cleanText);
+    console.log("Judge Result Parsed:", result);
     return result.satisfied_goals || [];
   } catch (error) {
     console.error("Judge Error:", error);
