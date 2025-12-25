@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { LEVEL_GOALS } from "../config/levelGoals";
 
 const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 const genAI = new GoogleGenAI({ apiKey });
@@ -115,5 +116,57 @@ export async function getAIResponse(topicId: string, history: { role: string, co
     } catch (fallbackError: any) {
         return `[System Error] ${error.message || error}`;
     }
+  }
+}
+
+export async function evaluateProgress(topicId: string, history: { role: string, content: string }[]) {
+  if (!apiKey) return [];
+
+  const goals = LEVEL_GOALS[topicId];
+  if (!goals) return [];
+
+  const judgePrompt = `
+    You are an impartial Judge for a digital logic educational game.
+    Your task is to analyze the conversation history between a Student (User) and a Stubborn Software Engineer (AI).
+    Check if the Student has successfully explained or achieved the following specific goals.
+
+    Goals to check:
+    ${goals.map(g => `- ID: ${g.id}\n  Requirement: ${g.judgePrompt}`).join('\n')}
+
+    Return a JSON object with a list of IDs of the goals that have been CLEARLY satisfied by the student in the conversation history.
+    Only mark a goal as satisfied if the student has explicitly mentioned the concept or provided the correct explanation/solution.
+  `;
+
+  const contents = history.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'model',
+    parts: [{ text: msg.content }]
+  }));
+
+  try {
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-exp", // Use a fast model for judging
+      config: {
+        systemInstruction: {
+          parts: [{ text: judgePrompt }]
+        },
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            satisfied_goals: {
+              type: "ARRAY",
+              items: { type: "STRING" }
+            }
+          }
+        }
+      },
+      contents: contents
+    });
+
+    const result = JSON.parse(response.text || "{}");
+    return result.satisfied_goals || [];
+  } catch (error) {
+    console.error("Judge Error:", error);
+    return [];
   }
 }

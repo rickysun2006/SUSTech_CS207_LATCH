@@ -1,45 +1,76 @@
 <template>
   <div class="chat-view">
-    <header class="chat-header">
-      <button @click="goBack" class="back-btn">← {{ $t('common.back') }}</button>
-      <div class="header-info">
-        <h2>{{ $t('chat.teaching', { topic: topicTitle }) }}</h2>
-        <span class="persona">{{ $t('chat.student', { persona: persona }) }}</span>
-      </div>
-      <button class="end-session-btn" @click="endSession">{{ $t('chat.endSession') }}</button>
-    </header>
-
-    <div class="chat-container" ref="chatContainer">
-      <div v-if="messages.length === 0" class="empty-state">
-        <p>{{ $t('chat.startPrompt', { topic: topicTitle }) }}</p>
+    <div class="sidebar">
+      <div class="progress-section">
+        <h3>{{ $t('chat.progress') }}</h3>
+        <div class="progress-bar-container">
+          <div class="progress-bar" :style="{ width: progressPercentage + '%' }"></div>
+        </div>
+        <span class="progress-text">{{ Math.round(progressPercentage) }}%</span>
       </div>
 
-      <div
-        v-for="(msg, index) in messages"
-        :key="index"
-        class="message-wrapper"
-        :class="msg.role"
-      >
-        <div class="avatar">
-          {{ msg.role === 'user' ? $t('chat.you') : $t('chat.ai') }}
-        </div>
-        <div class="message-bubble" v-if="msg.role === 'user'">
-          {{ msg.content }}
-        </div>
-        <div class="message-bubble markdown-body" v-else v-html="renderMarkdown(msg.content)"></div>
+      <div class="goals-list">
+        <h4>{{ $t('chat.goals') }}</h4>
+        <ul>
+          <li v-for="goal in levelGoals" :key="goal.id" :class="{ completed: satisfiedGoals.includes(goal.id) }">
+            <span class="status-icon">{{ satisfiedGoals.includes(goal.id) ? '✅' : '⚪' }}</span>
+            <span>{{ $t(goal.i18nKey) }}</span>
+          </li>
+        </ul>
       </div>
     </div>
 
-    <div class="input-area">
-      <textarea
-        v-model="userInput"
-        @keydown.enter.prevent="sendMessage"
-        :placeholder="$t('chat.placeholder')"
-        rows="3"
-      ></textarea>
-      <button @click="sendMessage" :disabled="!userInput.trim() || isLoading">
-        {{ isLoading ? $t('common.loading') : $t('chat.send') }}
-      </button>
+    <div class="main-chat-area">
+      <header class="chat-header">
+        <button @click="goBack" class="back-btn">← {{ $t('common.back') }}</button>
+        <div class="header-info">
+          <h2>{{ $t('chat.teaching', { topic: topicTitle }) }}</h2>
+          <span class="persona">{{ $t('chat.student', { persona: persona }) }}</span>
+        </div>
+        <button class="end-session-btn" @click="endSession">{{ $t('chat.endSession') }}</button>
+      </header>
+
+      <div class="chat-container" ref="chatContainer">
+        <div v-if="messages.length === 0" class="empty-state">
+          <p>{{ $t('chat.startPrompt', { topic: topicTitle }) }}</p>
+        </div>
+
+        <div
+          v-for="(msg, index) in messages"
+          :key="index"
+          class="message-wrapper"
+          :class="msg.role"
+        >
+          <div class="avatar">
+            {{ msg.role === 'user' ? $t('chat.you') : $t('chat.ai') }}
+          </div>
+          <div class="message-bubble" v-if="msg.role === 'user'">
+            {{ msg.content }}
+          </div>
+          <div class="message-bubble markdown-body" v-else v-html="renderMarkdown(msg.content)"></div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <textarea
+          v-model="userInput"
+          @keydown.enter.prevent="sendMessage"
+          :placeholder="$t('chat.placeholder')"
+          rows="3"
+        ></textarea>
+        <button @click="sendMessage" :disabled="!userInput.trim() || isLoading">
+          {{ isLoading ? $t('common.loading') : $t('chat.send') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div v-if="showSuccessModal" class="modal-overlay">
+      <div class="modal-content">
+        <h2>🎉 {{ $t('chat.successTitle') }}</h2>
+        <p>{{ $t('chat.successMessage') }}</p>
+        <button @click="goBack">{{ $t('common.back') }}</button>
+      </div>
     </div>
   </div>
 </template>
@@ -49,13 +80,16 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MarkdownIt from 'markdown-it'
-import { getAIResponse } from '../services/aiService'
+import { getAIResponse, evaluateProgress } from '../services/aiService'
+import { LEVEL_GOALS } from '../config/levelGoals'
 
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const chatContainer = ref<HTMLElement | null>(null)
 const isLoading = ref(false)
+const satisfiedGoals = ref<string[]>([])
+const showSuccessModal = ref(false)
 
 const md = new MarkdownIt({
   html: false,
@@ -78,6 +112,12 @@ const topicKeyMap: Record<string, string> = {
 }
 
 const currentTopicKey = topicKeyMap[topicId]
+const levelGoals = computed(() => LEVEL_GOALS[topicId] || [])
+
+const progressPercentage = computed(() => {
+  if (levelGoals.value.length === 0) return 0
+  return (satisfiedGoals.value.length / levelGoals.value.length) * 100
+})
 
 const topicTitle = computed(() => currentTopicKey ? t(`topics.${currentTopicKey}.title`) : 'Unknown Topic')
 const persona = computed(() => currentTopicKey ? t(`topics.${currentTopicKey}.persona`) : 'Unknown')
@@ -119,6 +159,15 @@ const sendMessage = async () => {
       role: 'assistant',
       content: aiResponse || '...'
     })
+
+    // Evaluate Progress in background
+    evaluateProgress(topicId, messages.value).then((goals) => {
+      satisfiedGoals.value = goals
+      if (progressPercentage.value >= 100) {
+        showSuccessModal.value = true
+      }
+    })
+
   } catch (e) {
     messages.value.push({
       role: 'assistant',
@@ -165,91 +214,169 @@ onMounted(() => {
 <style scoped>
 .chat-view {
   display: flex;
-  flex-direction: column;
   height: 100vh;
-  background-color: var(--color-background); /* 使用全局背景色变量 */
+  background: var(--c-bg-soft);
+  position: relative;
 }
 
-/* --- 头部设计 --- */
+/* --- Sidebar Styles --- */
+.sidebar {
+  width: 300px;
+  background: var(--c-bg-card);
+  border-right: 1px solid var(--color-border);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+}
+
+.progress-section h3, .goals-list h4 {
+  margin-bottom: 1rem;
+  color: var(--c-text-primary);
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 12px;
+  background: var(--c-bg-soft);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--c-primary), #ec4899);
+  transition: width 0.5s ease-out;
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  color: var(--c-text-secondary);
+  font-weight: bold;
+  float: right;
+}
+
+.goals-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.goals-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.9rem;
+  color: var(--c-text-secondary);
+  line-height: 1.4;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background 0.3s;
+}
+
+.goals-list li.completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  font-weight: 500;
+}
+
+.status-icon {
+  font-size: 1rem;
+}
+
+/* --- Main Chat Area --- */
+.main-chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 .chat-header {
-  background: rgba(255, 255, 255, 0.85); /* 如果是暗黑模式需调整这里，暂时保持明亮 */
-  backdrop-filter: blur(12px);
   padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
   z-index: 10;
 }
 
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.back-btn:hover {
+  color: var(--c-primary);
+}
+
+.header-info {
+  text-align: center;
+}
+
 .header-info h2 {
-  margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: var(--color-heading);
+  color: var(--c-text-primary);
+  margin: 0;
 }
 
 .persona {
-  font-size: 0.8rem;
-  color: var(--c-primary);
-  background: var(--c-primary-light);
-  padding: 2px 10px;
-  border-radius: 20px;
-  font-weight: 600;
-  margin-left: 0.5rem;
-}
-
-.back-btn, .end-session-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.back-btn {
-  background: transparent;
-  color: var(--color-text);
-}
-.back-btn:hover {
-  background: var(--color-border);
-  color: var(--color-heading);
+  font-size: 0.85rem;
+  color: var(--c-text-secondary);
+  background: var(--c-bg-soft);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  margin-top: 0.2rem;
+  display: inline-block;
 }
 
 .end-session-btn {
-  background: #fee2e2;
-  color: #dc2626;
-}
-.end-session-btn:hover {
-  background: #fecaca;
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-/* --- 消息区域 --- */
+.end-session-btn:hover {
+  background: #dc2626;
+}
+
 .chat-container {
   flex: 1;
+  padding: 2rem;
   overflow-y: auto;
-  padding: 2rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  width: 100%;
-  max-width: 850px; /*稍微加宽一点*/
-  margin: 0 auto;
-  /* 优化滚动条样式 */
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  scroll-behavior: smooth;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--c-text-secondary);
+  margin-top: 4rem;
+  font-style: italic;
 }
 
 .message-wrapper {
   display: flex;
-  gap: 1rem; /* 头像和气泡的间距 */
-  max-width: 90%; /* 防止消息太宽 */
+  gap: 1rem;
+  max-width: 80%;
   animation: fadeIn 0.25s ease-out;
-  /* 关键：对其方式 */
   align-items: flex-start;
 }
 
@@ -258,7 +385,6 @@ onMounted(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 用户消息靠右，并反转flex方向 */
 .message-wrapper.user {
   align-self: flex-end;
   flex-direction: row-reverse;
@@ -273,12 +399,12 @@ onMounted(() => {
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 700;
-  flex-shrink: 0; /* 关键：防止头像被挤压 */
+  flex-shrink: 0;
   box-shadow: var(--shadow-sm);
 }
 
 .user .avatar {
-  background: var(--c-primary); /* 使用主色调 */
+  background: var(--c-primary);
   color: white;
 }
 
@@ -288,27 +414,23 @@ onMounted(() => {
   border: 1px solid var(--color-border);
 }
 
-/* --- 消息气泡核心修复 --- */
 .message-bubble {
   padding: 0.8rem 1.2rem;
   border-radius: 18px;
   line-height: 1.6;
   font-size: 0.95rem;
   position: relative;
-
-  /* 关键修复：确保文字换行，防止溢出重合 */
   word-break: break-word;
   overflow-wrap: break-word;
-  /* 确保在Flex容器中能正确计算宽度 */
   min-width: 0;
-  flex: 1; /* 让气泡占据剩余空间，但不超过 max-width */
+  flex: 1;
 }
 
 .user .message-bubble {
   background: var(--c-primary);
   color: white;
   border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25); /* 增加一点主色调的投影 */
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
 }
 
 .assistant .message-bubble {
@@ -319,7 +441,6 @@ onMounted(() => {
   box-shadow: var(--shadow-sm);
 }
 
-/* --- 输入区域 --- */
 .input-area {
   background: transparent;
   padding: 1.5rem;
@@ -379,6 +500,61 @@ textarea:focus {
   box-shadow: none;
 }
 
+/* --- Modal Styles --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-content h2 {
+  color: var(--c-primary);
+  margin-bottom: 1rem;
+}
+
+.modal-content p {
+  color: var(--c-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.modal-content button {
+  background: var(--c-primary);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-content button:hover {
+  background: var(--c-primary-hover);
+}
+
 /* --- Markdown Styles --- */
 .markdown-body :deep(p) {
   margin-bottom: 0.8em;
@@ -390,51 +566,5 @@ textarea:focus {
 
 .markdown-body :deep(ul), .markdown-body :deep(ol) {
   margin-left: 1.5em;
-  margin-bottom: 0.8em;
-}
-
-.markdown-body :deep(li) {
-  margin-bottom: 0.4em;
-}
-
-.markdown-body :deep(pre) {
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 0.8em;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin-bottom: 0.8em;
-}
-
-.markdown-body :deep(code) {
-  font-family: monospace;
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 0.2em 0.4em;
-  border-radius: 4px;
-  font-size: 0.9em;
-}
-
-.markdown-body :deep(pre code) {
-  background-color: transparent;
-  padding: 0;
-}
-
-.markdown-body :deep(h1), .markdown-body :deep(h2), .markdown-body :deep(h3) {
-  margin-top: 1em;
-  margin-bottom: 0.5em;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.markdown-body :deep(a) {
-  color: var(--c-primary);
-  text-decoration: underline;
-}
-
-.markdown-body :deep(blockquote) {
-  border-left: 4px solid var(--color-border);
-  margin: 0;
-  padding-left: 1em;
-  color: var(--color-text);
-  font-style: italic;
 }
 </style>
