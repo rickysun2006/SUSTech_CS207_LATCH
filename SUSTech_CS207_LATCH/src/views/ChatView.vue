@@ -23,9 +23,10 @@
         <div class="avatar">
           {{ msg.role === 'user' ? $t('chat.you') : $t('chat.ai') }}
         </div>
-        <div class="message-bubble">
+        <div class="message-bubble" v-if="msg.role === 'user'">
           {{ msg.content }}
         </div>
+        <div class="message-bubble markdown-body" v-else v-html="renderMarkdown(msg.content)"></div>
       </div>
     </div>
 
@@ -47,6 +48,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import MarkdownIt from 'markdown-it'
 import { getAIResponse } from '../services/aiService'
 
 const route = useRoute()
@@ -54,6 +56,17 @@ const router = useRouter()
 const { t, locale } = useI18n()
 const chatContainer = ref<HTMLElement | null>(null)
 const isLoading = ref(false)
+
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true,
+  typographer: true
+})
+
+const renderMarkdown = (text: string) => {
+  return md.render(text)
+}
 
 const topicId = route.params.topicId as string
 
@@ -364,5 +377,64 @@ textarea:focus {
   transform: none;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* --- Markdown Styles --- */
+.markdown-body :deep(p) {
+  margin-bottom: 0.8em;
+}
+
+.markdown-body :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-body :deep(ul), .markdown-body :deep(ol) {
+  margin-left: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 0.4em;
+}
+
+.markdown-body :deep(pre) {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.8em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 0.8em;
+}
+
+.markdown-body :deep(code) {
+  font-family: monospace;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.markdown-body :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-body :deep(h1), .markdown-body :deep(h2), .markdown-body :deep(h3) {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.markdown-body :deep(a) {
+  color: var(--c-primary);
+  text-decoration: underline;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 4px solid var(--color-border);
+  margin: 0;
+  padding-left: 1em;
+  color: var(--color-text);
+  font-style: italic;
 }
 </style>
