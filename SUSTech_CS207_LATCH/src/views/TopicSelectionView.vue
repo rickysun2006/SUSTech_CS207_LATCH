@@ -3,6 +3,17 @@
     <header class="header">
       <h1>{{ $t('common.latch') }}</h1>
       <p>{{ $t('common.subtitle') }}</p>
+      
+      <div class="api-key-section">
+        <input 
+          type="password" 
+          v-model="apiKeyInput" 
+          placeholder="Enter Google Gemini API Key"
+          class="api-key-input"
+          @change="saveApiKey"
+        />
+        <span v-if="isKeySaved" class="saved-indicator">✓ Saved</span>
+      </div>
     </header>
 
     <main class="main-content">
@@ -27,12 +38,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useSettingsStore } from '../stores/settings'
 
 const router = useRouter()
 const { t } = useI18n()
+const settingsStore = useSettingsStore()
+
+const apiKeyInput = ref('')
+const isKeySaved = ref(false)
+
+onMounted(() => {
+  apiKeyInput.value = settingsStore.apiKey
+})
+
+const saveApiKey = () => {
+  settingsStore.setApiKey(apiKeyInput.value)
+  isKeySaved.value = true
+  setTimeout(() => {
+    isKeySaved.value = false
+  }, 2000)
+}
 
 const topics = computed(() => [
   {
@@ -91,6 +119,37 @@ const selectTopic = (id: string) => {
 .header p {
   color: var(--c-text-secondary);
   font-size: 1.25rem;
+}
+
+.api-key-section {
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.api-key-input {
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  width: 300px;
+  background: rgba(255, 255, 255, 0.8);
+  font-family: monospace;
+  transition: all 0.3s;
+}
+
+.api-key-input:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-light);
+  outline: none;
+}
+
+.saved-indicator {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 0.9rem;
+  animation: fadeIn 0.3s;
 }
 
 .main-content {

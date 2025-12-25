@@ -1,8 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { LEVEL_GOALS } from "../config/levelGoals";
+import { useSettingsStore } from "../stores/settings";
 
-const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-const genAI = new GoogleGenAI({ apiKey });
+// Helper to get GenAI instance with dynamic key
+function getGenAI() {
+  const settings = useSettingsStore();
+  const apiKey = settings.apiKey;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set it in the home page.");
+  }
+  return new GoogleGenAI({ apiKey });
+}
 
 // Map levels to their system prompts
 const SYSTEM_PROMPTS: Record<string, string> = {
@@ -83,11 +91,8 @@ export async function getAIResponse(topicId: string, history: { role: string, co
   // Add system prompt as the first message from 'user' or use systemInstruction if supported
   // For simplicity with the new SDK, we can prepend it to the context or use the config
 
-  if (!apiKey) {
-    return "[Config Error] API Key is missing. Please check your .env file and restart the server.";
-  }
-
   try {
+    const genAI = getGenAI();
     const response = await genAI.models.generateContent({
       model: "gemini-3-flash-preview", // As requested by user
       config: {
@@ -101,8 +106,12 @@ export async function getAIResponse(topicId: string, history: { role: string, co
     return response.text;
   } catch (error: any) {
     console.error("AI Error:", error);
+    if (error.message.includes("API Key")) {
+        return "[System Error] API Key is missing. Please go back and set it.";
+    }
     // Fallback to gemini-2.0-flash-exp if 3.0 fails
     try {
+        const genAI = getGenAI();
         const response = await genAI.models.generateContent({
             model: "gemini-2.0-flash-exp",
             config: {
@@ -120,12 +129,12 @@ export async function getAIResponse(topicId: string, history: { role: string, co
 }
 
 export async function evaluateProgress(topicId: string, history: { role: string, content: string }[]) {
-  if (!apiKey) return [];
+  try {
+    const genAI = getGenAI();
+    const goals = LEVEL_GOALS[topicId];
+    if (!goals) return [];
 
-  const goals = LEVEL_GOALS[topicId];
-  if (!goals) return [];
-
-  const judgePrompt = `
+    const judgePrompt = `
     You are an impartial Judge for a digital logic educational game.
     Your task is to analyze the conversation history between a Student (User) and a Stubborn Software Engineer (AI).
     Check if the Student has successfully explained or achieved the following specific goals.
@@ -142,7 +151,6 @@ export async function evaluateProgress(topicId: string, history: { role: string,
     parts: [{ text: msg.content }]
   }));
 
-  try {
     const response = await genAI.models.generateContent({
       model: "gemini-2.0-flash-exp", // Use a fast model for judging
       config: {
